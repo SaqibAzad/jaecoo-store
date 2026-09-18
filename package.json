@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "build": "prisma generate && next build",
     "start": "next start",
     "lint": "eslint",
     "test": "npm run db:test:sync && vitest run",
@@ -14,7 +14,8 @@
     "db:test:sync": "DATABASE_URL=\"postgresql://saqib@localhost:5432/jaecoo_test?schema=public\" prisma migrate deploy",
     "db:seed": "tsx prisma/seed.ts",
     "db:studio": "prisma studio",
-    "check:money": "tsx scripts/check-money.ts"
+    "check:money": "tsx scripts/check-money.ts",
+    "postinstall": "prisma generate"
   },
   "dependencies": {
     "@prisma/adapter-pg": "^7.10.0",
