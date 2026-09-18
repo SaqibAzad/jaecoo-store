@@ -126,6 +126,17 @@ export async function buildPreview(offerId: string): Promise<ImportPreview> {
   if (variants.length === 0) warnings.push("This listing has no variants; it will import as a single item.");
   if (galleryFiles.length === 0) warnings.push("No gallery images were downloaded.");
 
+  // A zero price means the supplier prices by quantity rather than by variant,
+  // and the per-variant price came back empty. Publishing that would put the
+  // item on sale for nothing, so it is surfaced rather than quietly imported.
+  const zeroPriced = variants.filter((v) => v.costFen <= 0);
+  if (zeroPriced.length > 0) {
+    warnings.push(
+      `${zeroPriced.length} variant(s) came back with no price — this listing probably ` +
+        `prices by quantity. Set a price by hand before publishing.`
+    );
+  }
+
   const existing = await db.product.findUnique({ where: { offerId } });
 
   return {
@@ -274,6 +285,17 @@ export async function saveImport(input: PublishInput) {
     stock: number | null;
     sku_id: number | null;
   }>;
+
+  // Refuse to publish anything priced at zero, whatever the admin submitted.
+  if (input.publish) {
+    const bad = Object.entries(input.variantPrices).filter(([, p]) => !p || p <= 0);
+    if (bad.length > 0) {
+      throw new Error(
+        `Cannot publish: ${bad.length} variant(s) have no selling price. ` +
+          `Set a price for every variant, or save as a draft instead.`
+      );
+    }
+  }
 
   for (const [i, v] of rawVariants.entries()) {
     const costFen = Math.round(v.price_cny * 100);

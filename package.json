@@ -16,7 +16,8 @@
     "db:studio": "prisma studio",
     "check:money": "tsx scripts/check-money.ts",
     "postinstall": "prisma generate",
-    "import": "tsx scripts/import.ts"
+    "import": "tsx scripts/import.ts",
+    "admin": "bash scripts/admin.sh"
   },
   "dependencies": {
     "@prisma/adapter-pg": "^7.10.0",
