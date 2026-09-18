@@ -13,7 +13,13 @@ async function signIn(formData: FormData) {
   const user = await authenticate(email, password);
   if (!user) redirect(`/admin/login?error=1&next=${encodeURIComponent(next)}`);
 
-  await startSession(user.email);
+  try {
+    await startSession(user.email);
+  } catch {
+    // Almost always a missing or too-short SESSION_SECRET on the host.
+    // Without this the operator only sees a blank "server error" page.
+    redirect(`/admin/login?error=config&next=${encodeURIComponent(next)}`);
+  }
   redirect(next.startsWith("/admin") ? next : "/admin");
 }
 
@@ -23,6 +29,7 @@ export default async function LoginPage({ searchParams }: PageProps<"/admin/logi
   if (await currentAdmin()) redirect("/admin");
 
   const failed = sp.error === "1";
+  const misconfigured = sp.error === "config";
   const next = typeof sp.next === "string" ? sp.next : "/admin";
 
   return (
@@ -37,6 +44,17 @@ export default async function LoginPage({ searchParams }: PageProps<"/admin/logi
           <p className="mt-1.5 text-[13px] text-muted">
             Manage products, imports and orders.
           </p>
+
+          {misconfigured && (
+            <p
+              role="alert"
+              className="mt-4 border border-danger bg-[#fbeae7] px-3 py-2 text-[13px] text-danger"
+            >
+              Your password was correct, but the server cannot create a session.
+              SESSION_SECRET is missing or shorter than 32 characters. Check
+              <span className="font-tech"> /api/health</span> for details.
+            </p>
+          )}
 
           {failed && (
             <p
