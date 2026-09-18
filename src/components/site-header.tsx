@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { db } from "@/lib/db";
+import { CartBadge } from "./cart-badge";
 import { Wordmark } from "./wordmark";
 
 export async function SiteHeader() {
@@ -42,12 +43,7 @@ export async function SiteHeader() {
               <path d="M20 20l-3.5-3.5" />
             </svg>
           </Link>
-          <Link href="/cart" aria-label="Cart" className="text-ink hover:text-muted">
-            <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M6 7h12l-1 13H7L6 7z" />
-              <path d="M9 7a3 3 0 0 1 6 0" />
-            </svg>
-          </Link>
+          <CartBadge />
         </div>
       </div>
     </header>

@@ -1,7 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useTransition } from "react";
 import Image from "next/image";
+import { useRouter } from "next/navigation";
+import { addToCart } from "@/app/cart/actions";
 import { formatPkr } from "@/lib/money";
 
 export interface BuyVariant {
@@ -35,6 +37,25 @@ export function ProductBuy({
   const [picked, setPicked] = useState(variants[0]?.id ?? "");
   const [shown, setShown] = useState(Math.max(0, variants[0]?.imageIndex ?? 0));
   const [qty, setQty] = useState(1);
+  const [pending, start] = useTransition();
+  const [added, setAdded] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const router = useRouter();
+
+  function add() {
+    if (!current) return;
+    setError(null);
+    start(async () => {
+      const res = await addToCart(current.id, qty);
+      if (!res.ok) {
+        setError(res.error);
+        return;
+      }
+      setAdded(true);
+      router.refresh();          // update the header count
+      setTimeout(() => setAdded(false), 2500);
+    });
+  }
 
   /**
    * Picking a finish moves the gallery to that finish's photo — the two
@@ -155,11 +176,24 @@ export function ProductBuy({
           </div>
           <button
             type="button"
-            className="cut label h-[52px] flex-1 bg-ink text-[15px] font-bold text-white transition-opacity hover:opacity-90"
+            onClick={add}
+            disabled={pending || !current}
+            className="cut label h-[52px] flex-1 bg-ink text-[15px] font-bold text-white transition-opacity hover:opacity-90 disabled:opacity-50"
           >
-            Add to cart
+            {pending ? "Adding…" : added ? "Added ✓" : "Add to cart"}
           </button>
         </div>
+
+        {error && (
+          <p role="alert" className="mt-3 border border-danger bg-[#fbeae7] px-3 py-2 text-[13px] text-danger">
+            {error}
+          </p>
+        )}
+        {added && (
+          <a href="/cart" className="label mt-3 block border border-ink bg-surface px-4 py-2.5 text-center text-[12.5px] text-ink hover:bg-sunk">
+            View cart →
+          </a>
+        )}
 
         <div className="mt-4 grid gap-2.5 sm:grid-cols-2">
           <div className="border border-line bg-surface p-3.5">
