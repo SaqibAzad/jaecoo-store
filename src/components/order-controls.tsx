@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { moveOrder, addPayment, approvePayment, rejectPayment } from "@/app/admin/orders/actions";
+import { moveOrder, addPayment, approvePayment, rejectPayment } from "@/app/admin/(dashboard)/orders/actions";
 import { STATE_META, type OrderState } from "@/lib/order-state";
 import { formatPkr } from "@/lib/money";
 

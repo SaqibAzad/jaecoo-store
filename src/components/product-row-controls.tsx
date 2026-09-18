@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import Link from "next/link";
-import { setStatus, toggleFeatured, updateVariantPrice, deleteProduct } from "@/app/admin/products/actions";
+import { setStatus, toggleFeatured, updateVariantPrice, deleteProduct } from "@/app/admin/(dashboard)/products/actions";
 import { formatCny } from "@/lib/money";
 
 interface V { id: string; name: string; pricePaisa: number; costFen: number }

@@ -3,7 +3,7 @@
 import { useState, useTransition } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { runImport, publishImport } from "@/app/admin/import/actions";
+import { runImport, publishImport } from "@/app/admin/(dashboard)/import/actions";
 import type { ImportPreview } from "@/lib/import-1688";
 import { formatPkr, formatCny } from "@/lib/money";
 

@@ -9,6 +9,12 @@ async function signOut() {
   redirect("/");
 }
 
+/**
+ * Guards every admin page. The sign-in page deliberately sits OUTSIDE this
+ * route group: when it was inside, this layout redirected unauthenticated
+ * visitors to /admin/login, which rendered under this same layout and
+ * redirected again — an infinite loop that made sign-in unreachable.
+ */
 export default async function AdminLayout({ children }: LayoutProps<"/admin">) {
   // The proxy only checks a cookie exists; this verifies it is genuine.
   const admin = await currentAdmin();
