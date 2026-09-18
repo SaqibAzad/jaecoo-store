@@ -25,7 +25,15 @@ export function SiteFooter() {
           ))}
         </div>
       </div>
-      <p className="mt-8 max-w-[88ch] border-t border-panel-2 pt-4 text-[12px] leading-relaxed text-[#6b6f71]">
+      <div className="mt-8 flex justify-end border-t border-panel-2 pt-4">
+        <Link
+          href="/admin"
+          className="label text-[10.5px] text-[#6b6f71] hover:text-white"
+        >
+          Sign in as admin
+        </Link>
+      </div>
+      <p className="max-w-[88ch] text-[12px] leading-relaxed text-[#6b6f71]">
         Independent retailer of aftermarket accessories. Not affiliated with, endorsed by, or an
         official dealer of JAECOO, OMODA or Chery Automobile. Model names are used only to indicate
         vehicle fitment.

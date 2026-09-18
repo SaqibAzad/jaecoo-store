@@ -13,6 +13,7 @@ import { createHash } from "node:crypto";
 import { join, extname, basename } from "node:path";
 import { homedir } from "node:os";
 import { sellPriceFromCost } from "../src/lib/money";
+import { hashPassword } from "../src/lib/auth";
 
 const db = new PrismaClient({
   adapter: new PrismaPg({ connectionString: process.env.DATABASE_URL! }),
@@ -68,6 +69,24 @@ async function main() {
   console.log(
     `settings: ¥1 = Rs ${settings.cnyToPkr}, markup x${settings.markup}, deposit ${settings.depositPercent}%`
   );
+
+  // --- the admin account --------------------------------------------------
+  const adminEmail = process.env.ADMIN_EMAIL?.trim().toLowerCase();
+  const adminPassword = process.env.ADMIN_PASSWORD;
+  if (adminEmail && adminPassword) {
+    await db.adminUser.upsert({
+      where: { email: adminEmail },
+      update: { passwordHash: hashPassword(adminPassword) },
+      create: {
+        email: adminEmail,
+        passwordHash: hashPassword(adminPassword),
+        name: "Saqib",
+      },
+    });
+    console.log(`admin: ${adminEmail} (password hashed, never stored in plaintext)`);
+  } else {
+    console.log("admin: skipped — set ADMIN_EMAIL and ADMIN_PASSWORD to create one");
+  }
 
   // --- vehicle models -----------------------------------------------------
   const models = [
