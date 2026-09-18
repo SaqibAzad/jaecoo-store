@@ -1,0 +1,281 @@
+// Jaecoo Accessories — data model
+//
+// Money is stored in PAISA (integer) everywhere, never floats. Rs 2,317.00 is
+// 231700. Supplier costs are stored in FEN (CNY cents) for the same reason.
+// Every display price is derived; nothing rounds twice.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ---------------------------------------------------------------- catalogue
+
+enum ProductStatus {
+  DRAFT      // imported, not yet visible
+  PUBLISHED
+  ARCHIVED
+}
+
+model Product {
+  id            String        @id @default(cuid())
+  slug          String        @unique
+  status        ProductStatus @default(DRAFT)
+
+  // what the customer reads
+  title         String
+  subtitle      String?
+  descriptionMd String?       @db.Text
+  fitmentNote   String?       @db.Text // "Fits the L-type 4-button key only…"
+
+  // what we bought
+  sourceUrl     String?
+  offerId       String?       @unique // 1688 offer id
+  titleZh       String?
+  supplierMoq   Int?
+
+  model         VehicleModel  @relation(fields: [modelId], references: [id])
+  modelId       String
+  category      Category?     @relation(fields: [categoryId], references: [id])
+  categoryId    String?
+
+  variants      Variant[]
+  images        Image[]
+  orderItems    OrderItem[]
+
+  featured      Boolean       @default(false)
+  position      Int           @default(0)
+  publishedAt   DateTime?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  @@index([status, modelId])
+  @@index([status, featured])
+}
+
+model Variant {
+  id          String      @id @default(cuid())
+  product     Product     @relation(fields: [productId], references: [id], onDelete: Cascade)
+  productId   String
+
+  name        String      // English, shown to customers
+  nameZh      String?     // original, kept so we can re-match on reorder
+  sku         String      @unique
+  supplierSku String?     // 1688 skuId
+
+  costFen     Int         // supplier price in CNY cents
+  pricePaisa  Int         // selling price in PKR paisa (cost x rate x markup, then edited)
+
+  stock       Int         @default(0) // supplier availability, not our inventory
+  position    Int         @default(0)
+
+  image       Image?      @relation(fields: [imageId], references: [id])
+  imageId     String?
+
+  orderItems  OrderItem[]
+
+  @@index([productId, position])
+}
+
+enum ImageKind {
+  GALLERY
+  VARIANT
+  DESCRIPTION
+}
+
+model Image {
+  id        String    @id @default(cuid())
+  product   Product   @relation(fields: [productId], references: [id], onDelete: Cascade)
+  productId String
+  kind      ImageKind @default(GALLERY)
+  path      String    // storage key, not a remote URL — we host what we serve
+  /// Content hash. 1688 ships variant photos that are byte-identical to gallery
+  /// photos, so this is how we store each image once and point variants at it.
+  sha256    String?
+  alt       String?
+  width     Int?
+  height    Int?
+  position  Int       @default(0)
+  variants  Variant[]
+
+  @@index([productId, kind, position])
+}
+
+model VehicleModel {
+  id       String    @id @default(cuid())
+  slug     String    @unique // "j7"
+  name     String    // "J7"
+  kind     String?   // "SUV · PHEV"
+  position Int       @default(0)
+  products Product[]
+}
+
+model Category {
+  id       String    @id @default(cuid())
+  slug     String    @unique
+  name     String
+  position Int       @default(0)
+  products Product[]
+}
+
+// ---------------------------------------------------------------- orders
+
+/// The only path an order may take. Money states come before logistics states
+/// because we do not order from the supplier until the deposit clears.
+enum OrderState {
+  AWAITING_DEPOSIT      // placed, nothing paid
+  DEPOSIT_PAID          // deposit verified — safe to buy from supplier
+  ORDERED_FROM_SUPPLIER // placed on 1688
+  IN_TRANSIT            // left the supplier
+  BALANCE_DUE           // landed in PK, balance not yet paid
+  DISPATCHED            // sent to the customer
+  CANCELLED
+  REFUNDED
+}
+
+enum PaymentPlan {
+  FULL    // pay everything up front
+  PARTIAL // deposit now, balance before dispatch
+}
+
+model Order {
+  id            String      @id @default(cuid())
+  /// Postgres assigns this, so two orders placed at the same instant cannot
+  /// end up with the same human-facing number.
+  seq           Int         @unique @default(autoincrement())
+  number        String      @unique // "JA-1042", derived from seq
+  state         OrderState  @default(AWAITING_DEPOSIT)
+  plan          PaymentPlan @default(FULL)
+
+  customerName  String
+  phone         String
+  email         String?
+  addressLine   String
+  city          String
+  postcode      String?
+  notes         String?     @db.Text
+
+  totalPaisa    Int
+  paidPaisa     Int         @default(0)
+  /// depositPaisa is what we asked for up front. Stored rather than derived so
+  /// changing the default deposit rate never rewrites historical orders.
+  depositPaisa  Int         @default(0)
+
+  supplierRef   String?     // our 1688 order reference
+  trackingRef   String?
+
+  items         OrderItem[]
+  payments      Payment[]
+  events        OrderEvent[]
+
+  placedAt      DateTime    @default(now())
+  dispatchedAt  DateTime?
+  updatedAt     DateTime    @updatedAt
+
+  @@index([state, placedAt])
+  @@index([phone])
+}
+
+model OrderItem {
+  id           String   @id @default(cuid())
+  order        Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  orderId      String
+
+  variant      Variant? @relation(fields: [variantId], references: [id], onDelete: SetNull)
+  variantId    String?
+  product      Product? @relation(fields: [productId], references: [id], onDelete: SetNull)
+  productId    String?
+
+  /// Snapshots — a later price edit or delisting must not rewrite an order.
+  titleSnapshot   String
+  variantSnapshot String
+  unitPricePaisa  Int
+  costFenSnapshot Int
+
+  quantity     Int      @default(1)
+
+  @@index([orderId])
+}
+
+enum PaymentKind {
+  DEPOSIT
+  BALANCE
+  FULL
+  REFUND
+}
+
+enum PaymentMethod {
+  BANK_TRANSFER
+  JAZZCASH
+  EASYPAISA
+  CARD
+  OTHER
+}
+
+enum PaymentStatus {
+  PENDING_REVIEW // customer says they paid; proof uploaded
+  VERIFIED
+  REJECTED
+}
+
+model Payment {
+  id          String        @id @default(cuid())
+  order       Order         @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  orderId     String
+
+  kind        PaymentKind
+  method      PaymentMethod
+  status      PaymentStatus @default(PENDING_REVIEW)
+  amountPaisa Int
+
+  reference   String?       // bank/wallet transaction id the customer typed
+  proofPath   String?       // uploaded screenshot
+  reviewNote  String?
+
+  submittedAt DateTime      @default(now())
+  verifiedAt  DateTime?
+
+  @@index([orderId, status])
+  @@index([status, submittedAt])
+}
+
+/// Append-only audit trail. Every state change writes one; nothing else may
+/// mutate Order.state without leaving a row here.
+model OrderEvent {
+  id        String      @id @default(cuid())
+  order     Order       @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  orderId   String
+  from      OrderState?
+  to        OrderState
+  note      String?
+  actor     String?     // admin email, or "system"
+  createdAt DateTime    @default(now())
+
+  @@index([orderId, createdAt])
+}
+
+// ---------------------------------------------------------------- settings
+
+/// Single-row table (id = "singleton"). Pricing inputs live here so changing
+/// the rate or markup never means a redeploy.
+model Settings {
+  id             String   @id @default("singleton")
+  cnyToPkr       Float    @default(41.37)
+  markup         Float    @default(2.0)
+  depositPercent Int      @default(30)
+  leadTimeMinDays Int     @default(18)
+  leadTimeMaxDays Int     @default(25)
+  freeDeliveryOverPaisa Int @default(500000) // Rs 5,000
+  updatedAt      DateTime @updatedAt
+}
+
+model AdminUser {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String
+  name         String?
+  createdAt    DateTime @default(now())
+}

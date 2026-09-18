@@ -1,26 +1,75 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
+/**
+ * Jaecoo Accessories design tokens.
+ *
+ * Monochrome by design — the brand language has no accent colour, so amber is
+ * reserved for exactly one job: fitment warnings. If something needs to shout,
+ * it uses weight, size or the black panel, not a new hue.
+ */
+@theme {
+  --color-ink: #0b0d0e;
+  --color-panel: #15181a;
+  --color-panel-2: #23282b;
+  --color-paper: #f2f2f1;
+  --color-surface: #ffffff;
+  --color-sunk: #fafafa;
+  --color-line: #e2e2e0;
+  --color-line-soft: #eeeeec;
+  --color-body: #3d4144;
+  --color-muted: #8c8f90;
+  --color-faint: #a9acad;
+  --color-inverse-muted: #a8abac;
+
+  --color-warn: #b5760f;
+  --color-warn-deep: #8a5a09;
+  --color-warn-soft: #fdf6e9;
+  --color-warn-line: #e8dcc2;
+
+  --color-good: #1e6b4a;
+  --color-danger: #9e2b1c;
+
+  --font-mark: var(--font-michroma), "Chakra Petch", sans-serif;
+  --font-tech: var(--font-chakra), "Barlow Semi Condensed", sans-serif;
+  --font-body: var(--font-barlow), system-ui, sans-serif;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+/* The notched corner is the brand's most distinctive detail. */
+@utility cut {
+  clip-path: polygon(
+    0 0,
+    100% 0,
+    100% calc(100% - 13px),
+    calc(100% - 13px) 100%,
+    0 100%
+  );
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+@utility cut-sm {
+  clip-path: polygon(
+    0 0,
+    100% 0,
+    100% calc(100% - 9px),
+    calc(100% - 9px) 100%,
+    0 100%
+  );
+}
+
+/* Wide-tracked uppercase labels, used throughout the brand language. */
+@utility label {
+  font-family: var(--font-tech);
+  font-weight: 600;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--color-paper);
+  color: var(--color-body);
+  font-family: var(--font-body);
+}
+
+/* Tabular figures wherever money lines up in a column. */
+.tnum {
+  font-variant-numeric: tabular-nums;
 }
